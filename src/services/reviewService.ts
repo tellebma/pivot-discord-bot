@@ -22,8 +22,9 @@ export interface ReviewResult {
  * Orchestration de bout en bout d'une relecture de PR :
  *   1. récupère les métadonnées et le diff via l'API GitHub ;
  *   2. tronque le diff si nécessaire ;
- *   3. construit le prompt optimisé ;
- *   4. lance l'agent Claude (sans contexte) via la CLI de l'hôte.
+ *   3. construit le prompt de relecture ;
+ *   4. lance l'agent Claude via la CLI, avec la CLI `gh` comme seul outil
+ *      autorisé pour approuver la PR ou demander des changements dessus.
  */
 export async function generateReview(ref: PullRequestRef): Promise<ReviewResult> {
   Logger.info('Starting PR review', {

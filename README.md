@@ -6,10 +6,11 @@
 Bot Discord de **relecture automatisée de Pull Requests GitHub**.
 
 Le bot surveille un (ou plusieurs) canal(aux) Discord configurable(s). Dès qu'un
-lien vers une Pull Request GitHub y est posté, il lance une **relecture complète
-par un agent Claude sans contexte**, à l'aide d'un **prompt optimisé**, en
-passant par la **CLI Claude installée sur la machine hôte**. Le résultat est
-publié dans un fil de discussion attaché au message d'origine.
+lien vers une Pull Request GitHub y est posté, il lance une **relecture par un
+agent Claude**, en passant par la **CLI Claude installée sur la machine hôte**.
+L'agent **approuve la PR** si elle peut l'être, ou **demande des changements
+directement dessus** via la CLI `gh`. Un résumé est publié dans un fil de
+discussion attaché au message d'origine.
 
 Construit sur [`template_discord_bot_ts`](https://github.com/tellebma/template_discord_bot_ts)
 (TypeScript + discord.js v14) : architecture modulaire (commandes, événements,
@@ -22,11 +23,12 @@ centralisée et intégration Sentry optionnelle.
    dans un canal surveillé.
 2. Le bot réagit avec 👀, récupère les métadonnées et le **diff complet** de la
    PR via l'API REST GitHub.
-3. Il construit un prompt de relecture optimisé (résumé, bugs, sécurité,
-   performance, tests, qualité, verdict) puis invoque la CLI Claude en mode
-   headless (`claude -p`), **sans historique ni contexte partagé**.
-4. La relecture est publiée dans un fil de discussion, et le message est marqué
-   ✅ (ou ❌ en cas d'échec).
+3. Il construit un prompt de relecture puis invoque la CLI Claude en mode
+   headless (`claude -p`), avec la CLI **`gh` comme seul outil autorisé** :
+   l'agent **approuve la PR** ou **demande des changements** (avec les
+   correctifs proposés) directement sur GitHub.
+4. Le résumé de la relecture est publié dans un fil de discussion, et le message
+   est marqué ✅ (ou ❌ en cas d'échec).
 
 La commande **`/review url:<lien_PR>`** permet aussi de déclencher une relecture
 manuellement, depuis n'importe quel canal.
@@ -76,9 +78,11 @@ cp .env.example .env   # puis renseignez les variables
 | `DISCORD_TOKEN`            | ✅          | Token du bot Discord.                                              |
 | `DISCORD_CLIENT_ID`        | ✅          | Client ID de l'application Discord.                               |
 | `PR_REVIEW_CHANNEL_ID`     | –           | ID(s) des canaux surveillés (séparés par des virgules).           |
-| `GITHUB_TOKEN`             | –           | Token GitHub (dépôts privés / limites de débit).                  |
+| `GITHUB_TOKEN`             | –           | Token GitHub (lecture des PR + approbation/commentaires via `gh`). |
 | `GITHUB_API_URL`           | –           | Base de l'API GitHub (GitHub Enterprise). Défaut : api.github.com. |
 | `PR_REVIEW_MAX_DIFF_CHARS` | –           | Taille max du diff envoyé à l'agent. Défaut : 200000.             |
+| `PR_REVIEW_ALLOWED_TOOLS`  | –           | Outils de l'agent de relecture. Défaut : `Bash(gh pr:*),Bash(gh api:*)`. |
+| `PR_REVIEW_MAX_TURNS`      | –           | Tours max de l'agent de relecture. Défaut : 20.                   |
 | `CLAUDE_CLI_PATH`          | –           | Commande de la CLI Claude. Défaut : `claude`.                     |
 | `CLAUDE_CLI_MODEL`         | –           | Modèle Claude (optionnel).                                        |
 | `CLAUDE_CLI_EXTRA_ARGS`    | –           | Arguments CLI supplémentaires (séparés par des espaces).          |

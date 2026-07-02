@@ -20,14 +20,18 @@ const metadata: PullRequestMetadata = {
 };
 
 describe('buildReviewPrompt', () => {
-  it('inclut les métadonnées, le diff et la grille de relecture', () => {
+  it('inclut les métadonnées, le diff et la demande de relecture', () => {
     const prompt = buildReviewPrompt(metadata, 'diff --git a/x b/x', false);
     expect(prompt).toContain('tellebma/pivot-discord-bot');
     expect(prompt).toContain('#42');
     expect(prompt).toContain('Ajoute la relecture de PR');
     expect(prompt).toContain('diff --git a/x b/x');
-    expect(prompt).toContain('### ✅ Verdict');
-    expect(prompt).toContain('EXCLUSIVEMENT');
+  });
+
+  it("demande d'approuver ou de proposer des changements via gh", () => {
+    const prompt = buildReviewPrompt(metadata, 'diff', false);
+    expect(prompt).toContain('gh pr review 42 --repo tellebma/pivot-discord-bot --approve');
+    expect(prompt).toContain('gh pr review 42 --repo tellebma/pivot-discord-bot --request-changes');
   });
 
   it('signale une troncature du diff quand demandé', () => {

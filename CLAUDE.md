@@ -10,8 +10,9 @@ orchestre la **CLI Claude installée sur la machine hôte** pour rendre deux
 services :
 
 1. **Relecture de Pull Requests GitHub** (`/review` + surveillance de canaux) —
-   un agent Claude **sans contexte** relit le diff d'une PR avec un prompt
-   optimisé.
+   un agent Claude relit le diff d'une PR puis **agit directement dessus via la
+   CLI `gh`** : approbation si la PR est correcte, demande de changements avec
+   les correctifs proposés sinon.
 2. **Recherche métier `/ask`** — Claude Code explore un **checkout local du code
    Pivot** (branche `main`) en **lecture seule** et répond à une question
    **fonctionnelle** (non technique), avec des garde-fous anti-hallucination.
@@ -94,8 +95,12 @@ Toute invocation passe par `runClaudeCli({ prompt, cliPath, args, timeoutMs, cwd
 
 - Le **prompt est transmis via stdin** (pas d'argument) pour éviter les limites
   de longueur.
-- **`/review`** : `claude -p --output-format text` **sans `cwd`** et sans outils
-  — l'agent ne reçoit que le diff dans le prompt (contexte nul, aucune I/O).
+- **`/review`** : `claude -p --output-format text --allowedTools "Bash(gh pr:*)"
+  "Bash(gh api:*)" --max-turns N` **sans `cwd`** — l'agent reçoit le diff dans le
+  prompt et n'a accès qu'à la CLI `gh` (configurable via
+  `PR_REVIEW_ALLOWED_TOOLS`) pour **approuver la PR ou demander des changements**
+  directement sur GitHub. `gh` s'authentifie via `GITHUB_TOKEN` (hérité de
+  l'environnement du bot), qui doit donc avoir le droit d'écriture sur les PR.
 - **`/ask`** : `claude -p --output-format text --allowedTools Read Grep Glob
   --max-turns N` avec **`cwd` = checkout du code Pivot**. La liste blanche
   d'outils est le **garde-fou principal en lecture seule** : sans `Write`,
@@ -126,7 +131,7 @@ Voir `.env.example` pour la liste complète et commentée. Repères :
 - **Obligatoire** : `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`.
 - **Relecture** : `PR_REVIEW_CHANNEL_ID` (canaux surveillés), `GITHUB_TOKEN`,
   `CLAUDE_CLI_PATH`, `CLAUDE_CLI_MODEL`, `CLAUDE_REVIEW_TIMEOUT_MS`,
-  `PR_REVIEW_MAX_DIFF_CHARS`.
+  `PR_REVIEW_MAX_DIFF_CHARS`, `PR_REVIEW_ALLOWED_TOOLS`, `PR_REVIEW_MAX_TURNS`.
 - **/ask** : `ASK_REPO_PATH` (active la commande), `ASK_ALLOWED_TOOLS`,
   `ASK_MAX_TURNS`, `ASK_TIMEOUT_MS`, `ASK_MAX_QUESTION_LENGTH`,
   `ASK_CLAUDE_MODEL`.

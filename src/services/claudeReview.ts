@@ -3,9 +3,9 @@ import { runClaudeCli } from './claudeCli';
 import type { PullRequestMetadata } from './github';
 
 /**
- * Construit le prompt optimisé de relecture. L'agent est volontairement
- * « sans contexte » : il ne dispose que des métadonnées et du diff fournis, et
- * doit fonder toute sa revue sur ce seul contenu.
+ * Construit le prompt de relecture. Volontairement simple : on demande une
+ * relecture de la PR et on laisse l'agent agir directement dessus via la CLI
+ * `gh` (approbation ou demande de changements).
  */
 export function buildReviewPrompt(
   metadata: PullRequestMetadata,
@@ -14,76 +14,54 @@ export function buildReviewPrompt(
 ): string {
   const description =
     metadata.body.trim().length > 0 ? metadata.body.trim() : '(aucune description)';
+  const prTarget = `${metadata.number} --repo ${metadata.owner}/${metadata.repo}`;
   const truncationNotice = diffTruncated
-    ? '\n\n> ⚠️ Le diff a été tronqué car il dépasse la limite configurée. Base ta revue sur la portion fournie et signale que la couverture est partielle.'
+    ? '\n\n> ⚠️ Le diff ci-dessus a été tronqué. Récupère le diff complet avec `gh pr diff` si nécessaire.'
     : '';
 
   return [
-    "Tu es un ingénieur logiciel senior chargé d'une relecture de code (code review) approfondie et rigoureuse d'une Pull Request GitHub.",
-    "On te fournit uniquement les métadonnées de la PR et son diff unifié. Tu n'as accès à AUCUN autre contexte, dépôt ou historique : fonde ta revue EXCLUSIVEMENT sur le diff ci-dessous.",
+    "Tu es chargé de la relecture (code review) d'une Pull Request GitHub. La CLI `gh` est disponible et déjà authentifiée : utilise-la pour agir directement sur la PR.",
     '',
-    '## Métadonnées de la Pull Request',
+    '## Pull Request',
     `- Dépôt : ${metadata.owner}/${metadata.repo}`,
     `- Numéro : #${metadata.number}`,
+    `- URL : ${metadata.htmlUrl}`,
     `- Titre : ${metadata.title}`,
-    `- Auteur : ${metadata.author}`,
     `- Branches : \`${metadata.headRef}\` → \`${metadata.baseRef}\``,
-    `- État : ${metadata.state}${metadata.merged ? ' (mergée)' : ''}`,
-    `- Volume : ${metadata.changedFiles} fichier(s) modifié(s), +${metadata.additions} / -${metadata.deletions}`,
     '',
     "## Description fournie par l'auteur",
     description,
     '',
-    '## Diff à relire',
+    '## Diff',
     '```diff',
     diff,
     '```',
     truncationNotice,
     '',
     '## Ta mission',
-    'Produis une relecture complète, actionnable et concise, en français, au format Markdown. Structure impérativement ta réponse ainsi :',
+    'Relis cette PR, puis agis directement dessus :',
+    `- Si elle peut être approuvée, approuve-la : \`gh pr review ${prTarget} --approve --body "<justification courte>"\`.`,
+    `- Si des modifications sont nécessaires, demande des changements : \`gh pr review ${prTarget} --request-changes --body "<modifications demandées>"\`, en proposant concrètement chaque correction (fichier, ligne, correctif suggéré) directement dans la PR.`,
     '',
-    '### 🔎 Résumé',
-    '2 à 3 phrases décrivant ce que fait la PR et une appréciation globale.',
-    '',
-    '### 🐛 Bugs & correction',
-    "Erreurs de logique, cas limites non gérés, régressions potentielles. Référence `fichier:ligne` quand c'est pertinent.",
-    '',
-    '### 🔒 Sécurité',
-    "Failles, secrets exposés, injections, absence de validation des entrées, contrôle d'accès.",
-    '',
-    '### ⚡ Performance',
-    'Requêtes N+1, boucles ou allocations coûteuses, opérations bloquantes.',
-    '',
-    '### 🧪 Tests',
-    'Tests manquants ou insuffisants au regard des changements.',
-    '',
-    '### 🎨 Qualité & style',
-    'Lisibilité, nommage, duplication, respect des conventions du langage.',
-    '',
-    '### ✅ Verdict',
-    "Choisis exactement l'une des options : **Approuver**, **Approuver avec réserves**, ou **Demander des changements**, suivie d'une justification en une phrase.",
-    '',
-    'Règles :',
-    "- Sois précis et évite les faux positifs : si une section n'a rien à signaler, écris « RAS ».",
-    '- Priorise les problèmes bloquants ; ignore les détails purement cosmétiques.',
-    "- Propose des correctifs ciblés plutôt que de réécrire l'ensemble de la PR.",
-    '- Ne renvoie que la revue au format Markdown, sans préambule ni conclusion superflus.',
+    "Termine ta réponse par un court résumé en français (Markdown, quelques phrases) de ta relecture et de l'action effectuée : ce résumé sera publié sur Discord.",
+    "Si une commande `gh` échoue, n'insiste pas : publie quand même ta relecture dans le résumé et signale que l'action sur GitHub n'a pas pu être réalisée.",
   ].join('\n');
 }
 
 /**
- * Invoque la CLI Claude en mode « print » (headless, session neuve donc sans
- * contexte) et renvoie le texte de la relecture. Le prompt est transmis via
- * stdin pour éviter les limites de longueur d'arguments.
+ * Invoque la CLI Claude en mode « print » (headless) et renvoie le texte de la
+ * relecture. Le prompt est transmis via stdin pour éviter les limites de
+ * longueur d'arguments. L'agent dispose d'une liste blanche d'outils limitée à
+ * la CLI `gh` afin de pouvoir approuver ou commenter la PR — et rien d'autre.
  */
 export function runClaudeReview(prompt: string): Promise<string> {
-  const { cliPath, model, extraArgs, timeoutMs } = reviewConfig.claude;
+  const { cliPath, model, extraArgs, timeoutMs, allowedTools, maxTurns } = reviewConfig.claude;
 
-  const args = ['-p', '--output-format', 'text'];
+  const args = ['-p', '--output-format', 'text', '--allowedTools', ...allowedTools];
   if (model) {
     args.push('--model', model);
   }
+  args.push('--max-turns', String(maxTurns));
   args.push(...extraArgs);
 
   return runClaudeCli({ prompt, cliPath, args, timeoutMs });
