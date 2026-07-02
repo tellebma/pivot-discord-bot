@@ -108,14 +108,20 @@ npm run build
 npm start
 ```
 
-### Docker
+### Docker (déploiement recommandé — « Option A »)
+
+Conteneur autonome : la CLI Claude Code est **embarquée dans l'image**, le code
+Pivot est monté **en lecture seule** pour `/ask`, et l'authentification Claude est
+fournie au runtime (clé API ou montage `~/.claude`).
 
 ```bash
-docker compose up --build
+cp .env.example .env      # renseigner DISCORD_*, PIVOT_SRC_PATH, ANTHROPIC_API_KEY…
+docker compose build
+docker compose up -d
 ```
 
-L'image installe la CLI Claude. Fournissez son authentification via
-`ANTHROPIC_API_KEY` (ou en montant `~/.claude`) — voir `docker-compose.yml`.
+📖 Guide complet, variantes d'authentification, permissions/UID et dépannage :
+**[`DEPLOYMENT.md`](./DEPLOYMENT.md)**.
 
 ## Architecture
 
