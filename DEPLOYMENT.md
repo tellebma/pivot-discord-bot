@@ -56,6 +56,33 @@ Elle est transmise au conteneur (`env_file`) puis héritée par le sous-processu
    - soit en (re)construisant l'image avec le bon UID :
      `docker compose build --build-arg UID=$(id -u) --build-arg GID=$(id -g)`.
 
+## 3 ter. GitHub App — reviews au nom d'un bot (optionnel, recommandé)
+
+Par défaut, les reviews sont publiées au nom du compte propriétaire du
+`GITHUB_TOKEN`. Avec une **GitHub App**, elles apparaissent au nom de l'App
+avec le badge officiel « bot » (ex. `pivot-review-bot[bot]`), et l'App peut
+approuver les PR de n'importe qui — y compris celles du propriétaire du token.
+
+1. Créer l'App sur l'organisation (Settings → Developer settings → GitHub
+   Apps) : webhook désactivé, permissions `Pull requests: Read and write` et
+   `Contents: Read-only`, puis l'**installer** sur les dépôts à relire.
+2. Récupérer : l'**App ID** (ou le Client ID `Iv...`), l'**Installation ID**
+   (dans l'URL de la page Configure : `.../installations/<ID>`) et la **clé
+   privée** (`.pem`, générée depuis la page de l'App — c'est le seul secret).
+3. Monter le `.pem` en volume **lecture seule** (voir `docker-compose.unraid.yml`,
+   volume 3) et renseigner dans `.env` :
+   ```bash
+   GITHUB_APP_ID=...
+   GITHUB_APP_INSTALLATION_ID=...
+   GITHUB_APP_PRIVATE_KEY_PATH=/home/botuser/github-app.pem
+   ```
+
+Le bot frappe lui-même les tokens d'installation (validité 1 h, cache
+automatique). Si ces variables sont absentes, comportement inchangé :
+`GITHUB_TOKEN` statique. Si un dépôt à relire n'est pas couvert par
+l'installation de l'App, `gh` recevra un 404 : ajouter le dépôt dans
+l'installation (page Configure de l'App).
+
 ## 4. Volume de code Pivot
 
 - Monté **en lecture seule** (`:ro`) : le garde-fou d'outils (`Read,Grep,Glob`)

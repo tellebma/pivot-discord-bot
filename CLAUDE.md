@@ -135,7 +135,11 @@ Si tu modifies `/ask`, **conserver ces trois couches** et mettre à jour
 Voir `.env.example` pour la liste complète et commentée. Repères :
 
 - **Obligatoire** : `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`.
-- **Relecture** : `PR_REVIEW_CHANNEL_ID` (canaux surveillés), `GITHUB_TOKEN`,
+- **Relecture** : `PR_REVIEW_CHANNEL_ID` (canaux surveillés), `GITHUB_TOKEN`
+  — ou une **GitHub App** via `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID` et
+  `GITHUB_APP_PRIVATE_KEY_PATH` (les trois ensemble) : les reviews sont alors
+  publiées au nom de l'App (`...[bot]`), tokens d'installation frappés par
+  `src/services/githubApp.ts` —,
   `CLAUDE_CLI_PATH`, `CLAUDE_CLI_MODEL`, `CLAUDE_REVIEW_TIMEOUT_MS`,
   `PR_REVIEW_WORKSPACE_DIR` (checkout local ; vide = désactivé),
   `PR_REVIEW_ALLOWED_TOOLS`, `PR_REVIEW_MAX_TURNS`.

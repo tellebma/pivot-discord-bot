@@ -1,5 +1,6 @@
 import { reviewConfig } from '@/utils/reviewConfig';
 import { ExternalServiceError } from '@/utils/errors';
+import { getGithubAppToken } from './githubApp';
 
 /**
  * Référence d'une Pull Request GitHub extraite d'une URL.
@@ -76,14 +77,16 @@ export function extractPullRequestRefs(content: string): PullRequestRef[] {
   return [...refs.values()];
 }
 
-function buildHeaders(accept: string): Record<string, string> {
+async function buildHeaders(accept: string): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     Accept: accept,
     'User-Agent': 'pivot-discord-bot',
     'X-GitHub-Api-Version': '2022-11-28',
   };
-  if (reviewConfig.github.token) {
-    headers['Authorization'] = `Bearer ${reviewConfig.github.token}`;
+  // Priorité à la GitHub App (identité bot) ; repli sur le token statique.
+  const token = (await getGithubAppToken()) ?? reviewConfig.github.token;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
   return headers;
 }
@@ -114,7 +117,7 @@ export async function fetchPullRequest(ref: PullRequestRef): Promise<PullRequest
   let response: Response;
   try {
     response = await fetch(pullRequestEndpoint(ref), {
-      headers: buildHeaders('application/vnd.github+json'),
+      headers: await buildHeaders('application/vnd.github+json'),
     });
   } catch (error) {
     throw new ExternalServiceError(

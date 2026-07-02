@@ -64,6 +64,16 @@ services:
       #    dans .env, et commenter la ligne ci-dessous.
       - /mnt/user/appdata/pivot-discord-bot/claude:/home/botuser/.claude
 
+      # 3) GitHub App « Pivot Review Bot » : clé privée pour frapper les tokens
+      #    d'installation (les reviews sont publiées au nom de l'App, badge
+      #    « bot »). Déposer le .pem téléchargé lors de la création de l'App :
+      #      cp <app>.private-key.pem /mnt/user/appdata/pivot-discord-bot/github-app.pem
+      #      chown 1001:1001 /mnt/user/appdata/pivot-discord-bot/github-app.pem
+      #      chmod 600 /mnt/user/appdata/pivot-discord-bot/github-app.pem
+      #    Et renseigner dans .env : GITHUB_APP_ID, GITHUB_APP_INSTALLATION_ID,
+      #    GITHUB_APP_PRIVATE_KEY_PATH=/home/botuser/github-app.pem
+      - /mnt/user/appdata/pivot-discord-bot/github-app.pem:/home/botuser/github-app.pem:ro
+
     # Garde-fous ressources (ajuster selon le serveur). La CLI Claude spawnée
     # pour /review et /ask consomme l'essentiel de la mémoire.
     mem_limit: 2g

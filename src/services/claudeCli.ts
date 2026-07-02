@@ -16,6 +16,11 @@ export interface ClaudeCliOptions {
   timeoutMs: number;
   /** Répertoire de travail (ex. checkout local du dépôt à analyser). */
   cwd?: string;
+  /**
+   * Variables d'environnement supplémentaires, fusionnées par-dessus celles du
+   * bot (ex. GITHUB_TOKEN frais frappé via la GitHub App).
+   */
+  env?: Record<string, string>;
 }
 
 /**
@@ -26,7 +31,7 @@ export interface ClaudeCliOptions {
  * est convertie en `ExternalServiceError` exploitable par l'appelant.
  */
 export function runClaudeCli(options: ClaudeCliOptions): Promise<string> {
-  const { prompt, cliPath, args, timeoutMs, cwd } = options;
+  const { prompt, cliPath, args, timeoutMs, cwd, env } = options;
 
   return new Promise<string>((resolve, reject) => {
     Logger.debug('Spawning Claude CLI', { cliPath, args, cwd });
@@ -34,6 +39,7 @@ export function runClaudeCli(options: ClaudeCliOptions): Promise<string> {
     const child = spawn(cliPath, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
       ...(cwd ? { cwd } : {}),
+      ...(env ? { env: { ...process.env, ...env } } : {}),
     });
 
     let stdout = '';

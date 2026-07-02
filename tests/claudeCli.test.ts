@@ -27,6 +27,22 @@ describe('runClaudeCli', () => {
     ).rejects.toThrow(/boom stderr/);
   });
 
+  it("transmet les variables d'environnement supplémentaires au processus", async () => {
+    // Utilisée pour injecter un GITHUB_TOKEN frais (GitHub App) dans la CLI `gh`.
+    await expect(
+      runClaudeCli({
+        prompt: 'peu importe',
+        cliPath: process.execPath,
+        args: [
+          '-e',
+          'process.stdout.write(process.env.PIVOT_TEST_GH_TOKEN ?? "absent"); process.exit(0);',
+        ],
+        timeoutMs: 10_000,
+        env: { PIVOT_TEST_GH_TOKEN: 'ghs_test' },
+      })
+    ).resolves.toBe('ghs_test');
+  });
+
   it("inclut stdout dans l'erreur quand la CLI échoue sans rien écrire sur stderr", async () => {
     // La CLI Claude écrit ses erreurs (ex. « Invalid API key ») sur stdout :
     // sans cette remontée, le message d'erreur est vide et inexploitable.
