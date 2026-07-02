@@ -1,0 +1,60 @@
+# Variante Unraid du déploiement « Option A » (conteneur autonome).
+#
+# L'image est PUBLIÉE sur GHCR par la CI (.github/workflows/docker-publish.yml)
+# à chaque push sur main : aucun build sur le serveur, aucun code source à
+# copier. Unraid fait un simple `docker pull`.
+#
+# Prérequis sur le serveur Unraid :
+#   1. Plugin « Docker Compose Manager » (Community Applications) : créer un
+#      projet et y déposer CE fichier (renommé docker-compose.yml) + le .env
+#      (basé sur .env.example).
+#   2. Si le package GHCR est privé, s'authentifier une fois sur le serveur :
+#        docker login ghcr.io -u tellebma
+#      (mot de passe = un Personal Access Token avec la portée read:packages).
+#   3. Cloner le code Pivot (branche main) dans
+#        /mnt/user/appdata/pivot-discord-bot/pivot-src
+#      (mise à jour possible via le plugin « User Scripts » : git pull périodique).
+#
+# Mise à jour du bot : Compose Down → Pull → Up depuis l'interface Unraid.
+#
+# Le bot n'expose AUCUN port : uniquement des connexions sortantes
+# (Discord, GitHub, Anthropic). Le réseau bridge par défaut suffit.
+
+services:
+  pivot-discord-bot:
+    image: ghcr.io/tellebma/pivot-discord-bot:latest
+    container_name: pivot-discord-bot
+    restart: unless-stopped
+    init: true # PID 1 léger : signaux propres + reaping des zombies
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      TZ: Europe/Paris
+      # Chemin du code Pivot À L'INTÉRIEUR du conteneur (cf. volume ci-dessous).
+      ASK_REPO_PATH: /pivot
+    volumes:
+      # 1) Code applicatif Pivot (branche main), en LECTURE SEULE, pour /ask.
+      - /mnt/user/appdata/pivot-discord-bot/pivot-src:/pivot:ro
+
+      # 2) Authentification Claude — DEUX options, en choisir UNE :
+      #
+      #    Option 2a (RECOMMANDÉE) : clé API. Rien à monter, il suffit de
+      #    définir ANTHROPIC_API_KEY dans .env.
+      #
+      #    Option 2b : abonnement Claude (Pro/Max). Faire `claude login` sur
+      #    une machine de confiance, copier le contenu de ~/.claude dans
+      #    /mnt/user/appdata/pivot-discord-bot/claude, l'attribuer à l'UID du
+      #    conteneur (chown -R 1001:1001 — l'image publiée tourne en botuser
+      #    1001, pas en nobody:users), puis décommenter :
+      # - /mnt/user/appdata/pivot-discord-bot/claude:/home/botuser/.claude
+
+    # Garde-fous ressources (ajuster selon le serveur). La CLI Claude spawnée
+    # pour /review et /ask consomme l'essentiel de la mémoire.
+    mem_limit: 2g
+    cpus: 2
+
+    # Intégration à l'interface Docker d'Unraid (icône + repérage).
+    labels:
+      net.unraid.docker.managed: composeman
+      net.unraid.docker.icon: https://raw.githubusercontent.com/discordjs/guide/main/guide/images/branding/logo.svg
