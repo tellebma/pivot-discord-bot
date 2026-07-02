@@ -31,6 +31,27 @@ centralisée et intégration Sentry optionnelle.
 La commande **`/review url:<lien_PR>`** permet aussi de déclencher une relecture
 manuellement, depuis n'importe quel canal.
 
+### Recherche métier : `/ask`
+
+La commande **`/ask question:<...>`** répond à une question **fonctionnelle**
+(« métier ») sur le produit **Pivot**. Le bot fait explorer un **checkout local
+du code Pivot** (branche `main`) par **Claude Code en lecture seule**, puis
+renvoie une réponse volontairement **non technique**.
+
+**Garde-fous** (pour éviter les réponses inventées ou trop techniques) :
+
+1. **Prompt strict** — rôle d'analyste fonctionnel, audience non technique,
+   interdiction du jargon et des extraits de code, obligation de répondre
+   uniquement à partir du code réellement consulté, et phrase de repli imposée
+   si l'information est absente (pas d'invention). La question est isolée pour
+   limiter l'injection de prompt.
+2. **Lecture seule** — outils limités à la recherche/lecture (`Read,Grep,Glob`) :
+   l'agent ne peut ni modifier le code ni exécuter de commande.
+3. **Post-traitement** — tout bloc de code résiduel est retiré de la réponse.
+
+`/ask` n'est active que si `ASK_REPO_PATH` pointe vers un checkout local du code
+Pivot.
+
 ## Prérequis
 
 - **Node.js ≥ 18**
@@ -62,6 +83,12 @@ cp .env.example .env   # puis renseignez les variables
 | `CLAUDE_CLI_MODEL`         | –           | Modèle Claude (optionnel).                                        |
 | `CLAUDE_CLI_EXTRA_ARGS`    | –           | Arguments CLI supplémentaires (séparés par des espaces).          |
 | `CLAUDE_REVIEW_TIMEOUT_MS` | –           | Délai max d'une relecture (ms). Défaut : 300000.                  |
+| `ASK_REPO_PATH`            | –           | Checkout local du code Pivot. Active `/ask` si défini.            |
+| `ASK_ALLOWED_TOOLS`        | –           | Outils Claude autorisés (lecture seule). Défaut : `Read,Grep,Glob`. |
+| `ASK_MAX_TURNS`            | –           | Tours d'exploration max pour `/ask`. Défaut : 30.                 |
+| `ASK_TIMEOUT_MS`           | –           | Délai max d'une recherche `/ask` (ms). Défaut : 300000.          |
+| `ASK_MAX_QUESTION_LENGTH`  | –           | Longueur max d'une question. Défaut : 500.                        |
+| `ASK_CLAUDE_MODEL`         | –           | Modèle Claude pour `/ask` (optionnel).                           |
 | `SENTRY_DSN`               | –           | Active Sentry si défini.                                          |
 
 > Pour obtenir l'ID d'un canal : activez le **Mode développeur** dans Discord
@@ -98,15 +125,18 @@ src/
 ├── deploy-commands.ts      # Enregistrement des commandes slash
 ├── commands/
 │   ├── ping.ts
-│   └── review.ts           # /review : relecture manuelle d'une PR
+│   ├── review.ts           # /review : relecture manuelle d'une PR
+│   └── ask.ts              # /ask : recherche métier sur le code Pivot
 ├── events/
 │   ├── ready.ts
 │   ├── interactionCreate.ts
 │   └── messageCreate.ts    # Détection des liens de PR dans les canaux surveillés
 ├── services/
+│   ├── claudeCli.ts        # Runner bas niveau de la CLI Claude (partagé)
 │   ├── github.ts           # Parsing d'URL + récupération métadonnées & diff
 │   ├── claudeReview.ts     # Prompt optimisé + invocation de la CLI Claude
-│   └── reviewService.ts    # Orchestration de bout en bout
+│   ├── reviewService.ts    # Orchestration de la relecture de PR
+│   └── askService.ts       # Prompt métier + garde-fous + orchestration /ask
 ├── interactions/           # Routage des composants (boutons, modals…)
 ├── types/
 └── utils/                  # Logger, config, erreurs, embeds, sanitisation…

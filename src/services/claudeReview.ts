@@ -1,7 +1,5 @@
-import { spawn } from 'child_process';
 import { reviewConfig } from '@/utils/reviewConfig';
-import { ExternalServiceError } from '@/utils/errors';
-import { Logger } from '@/utils/logger';
+import { runClaudeCli } from './claudeCli';
 import type { PullRequestMetadata } from './github';
 
 /**
@@ -82,93 +80,11 @@ export function buildReviewPrompt(
 export function runClaudeReview(prompt: string): Promise<string> {
   const { cliPath, model, extraArgs, timeoutMs } = reviewConfig.claude;
 
-  return new Promise<string>((resolve, reject) => {
-    const args = ['-p', '--output-format', 'text'];
-    if (model) {
-      args.push('--model', model);
-    }
-    args.push(...extraArgs);
+  const args = ['-p', '--output-format', 'text'];
+  if (model) {
+    args.push('--model', model);
+  }
+  args.push(...extraArgs);
 
-    Logger.debug('Spawning Claude CLI', { cliPath, args });
-
-    const child = spawn(cliPath, args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-
-    let stdout = '';
-    let stderr = '';
-    let settled = false;
-
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      child.kill('SIGKILL');
-      reject(
-        new ExternalServiceError(
-          `La relecture Claude a dépassé le délai de ${timeoutMs} ms`,
-          'Claude CLI',
-          undefined,
-          true
-        )
-      );
-    }, timeoutMs);
-    timer.unref();
-
-    child.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString();
-    });
-    child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString();
-    });
-
-    child.on('error', (error: Error) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      reject(
-        new ExternalServiceError(
-          `Impossible de lancer la CLI Claude (${cliPath}). Est-elle installée et dans le PATH ?`,
-          'Claude CLI',
-          undefined,
-          false,
-          {},
-          error
-        )
-      );
-    });
-
-    child.on('close', (code: number | null) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-
-      if (code === 0) {
-        const output = stdout.trim();
-        if (output.length === 0) {
-          reject(
-            new ExternalServiceError(
-              'La CLI Claude a renvoyé une sortie vide',
-              'Claude CLI',
-              undefined,
-              true
-            )
-          );
-          return;
-        }
-        resolve(output);
-      } else {
-        reject(
-          new ExternalServiceError(
-            `La CLI Claude s'est terminée avec le code ${code ?? 'inconnu'}: ${stderr.slice(0, 500)}`,
-            'Claude CLI',
-            undefined,
-            true
-          )
-        );
-      }
-    });
-
-    child.stdin.write(prompt);
-    child.stdin.end();
-  });
+  return runClaudeCli({ prompt, cliPath, args, timeoutMs });
 }
