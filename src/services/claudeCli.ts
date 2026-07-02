@@ -98,9 +98,12 @@ export function runClaudeCli(options: ClaudeCliOptions): Promise<string> {
         }
         resolve(output);
       } else {
+        // La CLI Claude écrit souvent ses erreurs (ex. « Invalid API key »)
+        // sur stdout : on s'y replie quand stderr est vide.
+        const detail = stderr.trim() || stdout.trim();
         reject(
           new ExternalServiceError(
-            `La CLI Claude s'est terminée avec le code ${code ?? 'inconnu'}: ${stderr.slice(0, 500)}`,
+            `La CLI Claude s'est terminée avec le code ${code ?? 'inconnu'}: ${detail.slice(0, 500)}`,
             'Claude CLI',
             undefined,
             true

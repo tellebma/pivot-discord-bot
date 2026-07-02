@@ -26,17 +26,31 @@ export interface ReviewConfig {
     extraArgs: string[];
     /** Délai maximal d'une relecture avant abandon, en millisecondes. */
     timeoutMs: number;
+    /**
+     * Outils autorisés pour l'agent de relecture : la CLI `gh` (consultation
+     * de la PR, approbation, demande de changements) et la lecture seule du
+     * checkout local (Read/Grep/Glob). Sans autre entrée dans cette liste,
+     * l'agent ne peut rien exécuter d'autre.
+     */
+    allowedTools: string[];
+    /** Nombre maximal de tours de l'agent (borne le coût). */
+    maxTurns: number;
   };
-  /** Taille maximale du diff (en caractères) envoyée à l'agent. */
-  maxDiffChars: number;
+  /**
+   * Répertoire des clones locaux servant de checkout au code des PR relues
+   * (un clone persistant par dépôt). `null` = checkout local désactivé, la
+   * relecture passe uniquement par la CLI `gh`.
+   */
+  workspaceDir: string | null;
 }
 
-function parseList(value: string | undefined): string[] {
-  if (!value) return [];
-  return value
+function parseList(value: string | undefined, fallback: string[] = []): string[] {
+  if (!value) return fallback;
+  const items = value
     .split(',')
     .map(item => item.trim())
     .filter(item => item.length > 0);
+  return items.length > 0 ? items : fallback;
 }
 
 function parseArgs(value: string | undefined): string[] {
@@ -45,6 +59,16 @@ function parseArgs(value: string | undefined): string[] {
     .split(/\s+/)
     .map(item => item.trim())
     .filter(item => item.length > 0);
+}
+
+/**
+ * Répertoire du workspace de relecture : valeur par défaut si la variable est
+ * absente, `null` (désactivé) si elle est explicitement vide.
+ */
+function parseWorkspaceDir(value: string | undefined): string | null {
+  if (value === undefined) return '.review-workspace';
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function parseInteger(value: string | undefined, fallback: number): number {
@@ -64,6 +88,14 @@ export const reviewConfig: ReviewConfig = {
     model: process.env['CLAUDE_CLI_MODEL'] || undefined,
     extraArgs: parseArgs(process.env['CLAUDE_CLI_EXTRA_ARGS']),
     timeoutMs: parseInteger(process.env['CLAUDE_REVIEW_TIMEOUT_MS'], 300_000),
+    allowedTools: parseList(process.env['PR_REVIEW_ALLOWED_TOOLS'], [
+      'Bash(gh pr:*)',
+      'Bash(gh api:*)',
+      'Read',
+      'Grep',
+      'Glob',
+    ]),
+    maxTurns: parseInteger(process.env['PR_REVIEW_MAX_TURNS'], 20),
   },
-  maxDiffChars: parseInteger(process.env['PR_REVIEW_MAX_DIFF_CHARS'], 200_000),
+  workspaceDir: parseWorkspaceDir(process.env['PR_REVIEW_WORKSPACE_DIR']),
 };

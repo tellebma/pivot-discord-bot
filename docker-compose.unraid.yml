@@ -33,21 +33,36 @@ services:
       TZ: Europe/Paris
       # Chemin du code Pivot À L'INTÉRIEUR du conteneur (cf. volume ci-dessous).
       ASK_REPO_PATH: /pivot
+      # Clones locaux du code des PR relues (cf. volume ci-dessous).
+      PR_REVIEW_WORKSPACE_DIR: /home/botuser/review-workspace
     volumes:
       # 1) Code applicatif Pivot (branche main), en LECTURE SEULE, pour /ask.
       - /mnt/user/appdata/pivot-discord-bot/pivot-src:/pivot:ro
 
-      # 2) Authentification Claude — DEUX options, en choisir UNE :
+      # 1 bis) Workspace de relecture : clones persistants des dépôts dont les
+      #    PR sont relues (cache réutilisé entre les relectures). Comme pour
+      #    ~/.claude, attribuer le dossier hôte à l'UID du conteneur :
+      #    chown -R 1001:1001 /mnt/user/appdata/pivot-discord-bot/review-workspace
+      - /mnt/user/appdata/pivot-discord-bot/review-workspace:/home/botuser/review-workspace
+
+      # 2) Authentification Claude : abonnement Claude (Pro/Max) via un montage
+      #    de ~/.claude (option retenue pour ce déploiement — pas de clé API ni
+      #    de token dans le .env).
       #
-      #    Option 2a (RECOMMANDÉE) : clé API. Rien à monter, il suffit de
-      #    définir ANTHROPIC_API_KEY dans .env.
+      #    Mise en place : faire `claude login` sur une machine de confiance
+      #    (ou sur l'Unraid lui-même — attention, /root n'y survit pas à un
+      #    redémarrage), copier le contenu de ~/.claude dans
+      #    /mnt/user/appdata/pivot-discord-bot/claude, puis l'attribuer à l'UID
+      #    du conteneur (chown -R 1001:1001 — l'image publiée tourne en botuser
+      #    1001, pas en nobody:users).
       #
-      #    Option 2b : abonnement Claude (Pro/Max). Faire `claude login` sur
-      #    une machine de confiance, copier le contenu de ~/.claude dans
-      #    /mnt/user/appdata/pivot-discord-bot/claude, l'attribuer à l'UID du
-      #    conteneur (chown -R 1001:1001 — l'image publiée tourne en botuser
-      #    1001, pas en nobody:users), puis décommenter :
-      # - /mnt/user/appdata/pivot-discord-bot/claude:/home/botuser/.claude
+      #    Montage en LECTURE/ÉCRITURE obligatoire : la CLI doit pouvoir
+      #    rafraîchir ses jetons OAuth.
+      #
+      #    Alternative sans montage : définir ANTHROPIC_API_KEY (clé API,
+      #    facturée à l'usage) ou CLAUDE_CODE_OAUTH_TOKEN (`claude setup-token`)
+      #    dans .env, et commenter la ligne ci-dessous.
+      - /mnt/user/appdata/pivot-discord-bot/claude:/home/botuser/.claude
 
     # Garde-fous ressources (ajuster selon le serveur). La CLI Claude spawnée
     # pour /review et /ask consomme l'essentiel de la mémoire.

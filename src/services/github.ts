@@ -155,35 +155,3 @@ export async function fetchPullRequest(ref: PullRequestRef): Promise<PullRequest
     htmlUrl: data.html_url ?? ref.url,
   };
 }
-
-/**
- * Récupère le diff unifié complet d'une Pull Request.
- */
-export async function fetchPullRequestDiff(ref: PullRequestRef): Promise<string> {
-  let response: Response;
-  try {
-    response = await fetch(pullRequestEndpoint(ref), {
-      headers: buildHeaders('application/vnd.github.v3.diff'),
-    });
-  } catch (error) {
-    throw new ExternalServiceError(
-      `Impossible de récupérer le diff de ${ref.owner}/${ref.repo}#${ref.number}`,
-      'GitHub API',
-      undefined,
-      true,
-      {},
-      error instanceof Error ? error : undefined
-    );
-  }
-
-  if (!response.ok) {
-    throw new ExternalServiceError(
-      `L'API GitHub a répondu ${response.status} lors de la récupération du diff`,
-      'GitHub API',
-      response.status,
-      response.status >= 500 || response.status === 429
-    );
-  }
-
-  return response.text();
-}

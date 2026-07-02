@@ -18,15 +18,26 @@ ENV NODE_ENV=production
 # soit un montage de ~/.claude (abonnement Pro/Max).
 RUN npm install -g @anthropic-ai/claude-code
 
+# La CLI GitHub (`gh`) permet à l'agent de relecture de consulter la PR et
+# d'approuver ou de demander des changements directement dessus. Elle
+# s'authentifie au runtime via la variable d'environnement GITHUB_TOKEN.
+# `git` est requis par `gh repo clone` / `gh pr checkout` pour préparer le
+# checkout local du code des PR relues.
+RUN apk add --no-cache git github-cli
+
 # Utilisateur non-root avec un UID/GID fixes et prévisibles. Fixer l'UID permet
 # d'aligner les permissions du volume ~/.claude monté depuis l'hôte
 # (surchargeable via l'argument de build UID/GID si besoin).
 ARG UID=1001
 ARG GID=1001
 ENV HOME=/home/botuser
+# Workspace de relecture : le défaut du code (.review-workspace, relatif au
+# cwd /usr/src/app) n'est pas inscriptible par botuser — on fixe un chemin
+# dans $HOME, surchargeable au runtime (et monté en volume en production).
+ENV PR_REVIEW_WORKSPACE_DIR=${HOME}/review-workspace
 RUN addgroup -S -g "${GID}" botgroup \
   && adduser -S -u "${UID}" -G botgroup -h "${HOME}" botuser \
-  && mkdir -p "${HOME}/.claude" \
+  && mkdir -p "${HOME}/.claude" "${HOME}/review-workspace" \
   && chown -R botuser:botgroup "${HOME}"
 
 COPY --from=builder /usr/src/app/dist ./dist

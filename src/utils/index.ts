@@ -2,6 +2,7 @@
  * Utility modules exports
  */
 export { Logger, LogLevel } from './logger';
+export { isLoadableModuleFile } from './moduleFiles';
 export { config, validateConfig } from './config';
 export { reviewConfig, type ReviewConfig } from './reviewConfig';
 export { askConfig, type AskConfig } from './askConfig';

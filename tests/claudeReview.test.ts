@@ -1,44 +1,58 @@
 import { describe, it, expect } from 'vitest';
-import { buildReviewPrompt } from '@/services/claudeReview';
-import type { PullRequestMetadata } from '@/services/github';
+import { buildReviewPrompt, selectReviewTools } from '@/services/claudeReview';
+import type { PullRequestRef } from '@/services/github';
 
-const metadata: PullRequestMetadata = {
+const ref: PullRequestRef = {
   owner: 'tellebma',
   repo: 'pivot-discord-bot',
   number: 42,
-  title: 'Ajoute la relecture de PR',
-  body: 'Description de la PR',
-  author: 'octocat',
-  baseRef: 'main',
-  headRef: 'feature/review',
-  state: 'open',
-  merged: false,
-  additions: 120,
-  deletions: 5,
-  changedFiles: 8,
-  htmlUrl: 'https://github.com/tellebma/pivot-discord-bot/pull/42',
+  url: 'https://github.com/tellebma/pivot-discord-bot/pull/42',
 };
 
 describe('buildReviewPrompt', () => {
-  it('inclut les métadonnées, le diff et la grille de relecture', () => {
-    const prompt = buildReviewPrompt(metadata, 'diff --git a/x b/x', false);
+  it('identifie la PR (dépôt, numéro, URL) sans injecter de diff ni de description', () => {
+    const prompt = buildReviewPrompt(ref, true);
     expect(prompt).toContain('tellebma/pivot-discord-bot');
     expect(prompt).toContain('#42');
-    expect(prompt).toContain('Ajoute la relecture de PR');
-    expect(prompt).toContain('diff --git a/x b/x');
-    expect(prompt).toContain('### ✅ Verdict');
-    expect(prompt).toContain('EXCLUSIVEMENT');
+    expect(prompt).toContain('https://github.com/tellebma/pivot-discord-bot/pull/42');
+    expect(prompt).not.toContain('```diff');
+    expect(prompt).not.toContain('## Description');
   });
 
-  it('signale une troncature du diff quand demandé', () => {
-    const truncated = buildReviewPrompt(metadata, 'diff', true);
-    expect(truncated).toContain('tronqué');
-    const full = buildReviewPrompt(metadata, 'diff', false);
-    expect(full).not.toContain('tronqué');
+  it("demande à l'agent de récupérer lui-même la description et le diff via gh", () => {
+    const prompt = buildReviewPrompt(ref, true);
+    expect(prompt).toContain('gh pr view 42 --repo tellebma/pivot-discord-bot');
+    expect(prompt).toContain('gh pr diff 42 --repo tellebma/pivot-discord-bot');
   });
 
-  it('gère une description vide', () => {
-    const prompt = buildReviewPrompt({ ...metadata, body: '' }, 'diff', false);
-    expect(prompt).toContain('(aucune description)');
+  it('signale le checkout local quand il est disponible', () => {
+    const prompt = buildReviewPrompt(ref, true);
+    expect(prompt).toContain('répertoire courant');
+    expect(prompt).toContain('Read, Grep et Glob');
+  });
+
+  it('propose le repli gh api quand le checkout local est indisponible', () => {
+    const prompt = buildReviewPrompt(ref, false);
+    expect(prompt).not.toContain('répertoire courant');
+    expect(prompt).toContain('gh api');
+  });
+
+  it("demande d'approuver ou de proposer des changements directement sur la PR", () => {
+    const prompt = buildReviewPrompt(ref, true);
+    expect(prompt).toContain('approuve-la');
+    expect(prompt).toContain('demande des changements');
+    expect(prompt).toContain('résumé');
+  });
+});
+
+describe('selectReviewTools', () => {
+  const tools = ['Bash(gh pr:*)', 'Bash(gh api:*)', 'Read', 'Grep', 'Glob'];
+
+  it('conserve tous les outils quand le checkout local est disponible', () => {
+    expect(selectReviewTools(tools, true)).toEqual(tools);
+  });
+
+  it('retire les outils de lecture du système de fichiers sans checkout local', () => {
+    expect(selectReviewTools(tools, false)).toEqual(['Bash(gh pr:*)', 'Bash(gh api:*)']);
   });
 });

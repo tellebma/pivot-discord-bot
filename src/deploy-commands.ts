@@ -2,6 +2,7 @@ import { REST, Routes } from 'discord.js';
 import { readdirSync } from 'fs';
 import { join } from 'path';
 import { config as dotenvConfig } from 'dotenv';
+import { isLoadableModuleFile } from '@/utils/moduleFiles';
 
 dotenvConfig();
 
@@ -10,9 +11,7 @@ async function deployCommands(): Promise<void> {
   const commandsPath = join(__dirname, 'commands');
 
   try {
-    const commandFiles = readdirSync(commandsPath).filter(
-      (file: string) => file.endsWith('.ts') || file.endsWith('.js')
-    );
+    const commandFiles = readdirSync(commandsPath).filter(isLoadableModuleFile);
 
     console.log('Loading commands for deployment...');
 
