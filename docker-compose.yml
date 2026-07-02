@@ -1,13 +1,38 @@
+# Déploiement « Option A » : conteneur autonome.
+# - La CLI Claude Code est embarquée dans l'image (voir Dockerfile).
+# - Le code Pivot est monté en LECTURE SEULE pour la commande /ask.
+# - L'authentification Claude est fournie au runtime (clé API OU montage ~/.claude).
+#
+# Voir DEPLOYMENT.md pour le guide complet.
+
 services:
   pivot-discord-bot:
     build: .
+    image: pivot-discord-bot:latest
+    container_name: pivot-discord-bot
     restart: unless-stopped
+    init: true # PID 1 léger : signaux propres + reaping des zombies
     env_file:
       - .env
     environment:
       NODE_ENV: production
-    # La CLI Claude a besoin d'une authentification. Fournissez soit une clé
-    # d'API, soit montez la configuration d'authentification de l'hôte.
-    #   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-    # volumes:
-    #   - ~/.claude:/home/botuser/.claude:ro
+      # Chemin du code Pivot À L'INTÉRIEUR du conteneur (cf. volume ci-dessous).
+      ASK_REPO_PATH: /pivot
+    volumes:
+      # 1) Code applicatif Pivot (branche main), en LECTURE SEULE, pour /ask.
+      #    Définissez PIVOT_SRC_PATH dans .env (défaut : /srv/pivot-src).
+      - ${PIVOT_SRC_PATH:-/srv/pivot-src}:/pivot:ro
+
+      # 2) Authentification Claude — DEUX options, en choisir UNE :
+      #
+      #    Option 2a (RECOMMANDÉE) : clé API. Rien à monter, il suffit de définir
+      #    ANTHROPIC_API_KEY dans .env (transmise au conteneur via env_file).
+      #
+      #    Option 2b : abonnement Claude (Pro/Max). Faire `claude login` sur l'hôte
+      #    puis décommenter le montage ci-dessous (lecture/écriture : la CLI doit
+      #    pouvoir rafraîchir ses jetons). Alignez alors l'UID (voir `user:`).
+      # - ${HOME}/.claude:/home/botuser/.claude
+
+    # À n'utiliser QUE si vous montez ~/.claude (option 2b) et que l'UID du
+    # propriétaire hôte du dossier n'est pas 1001 : alignez-le ici.
+    # user: "1000:1000"
