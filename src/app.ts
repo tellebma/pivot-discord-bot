@@ -15,6 +15,7 @@ import {
   initSentry,
   flushSentry,
   captureError,
+  isLoadableModuleFile,
 } from '@/utils';
 
 dotenvConfig();
@@ -38,9 +39,7 @@ async function loadCommands(): Promise<void> {
   const commandsPath = join(__dirname, 'commands');
 
   try {
-    const commandFiles = readdirSync(commandsPath).filter(
-      (file: string) => file.endsWith('.ts') || file.endsWith('.js')
-    );
+    const commandFiles = readdirSync(commandsPath).filter(isLoadableModuleFile);
 
     for (const file of commandFiles) {
       const filePath = join(commandsPath, file);
@@ -83,9 +82,7 @@ async function loadEvents(): Promise<void> {
   const eventsPath = join(__dirname, 'events');
 
   try {
-    const eventFiles = readdirSync(eventsPath).filter(
-      (file: string) => file.endsWith('.ts') || file.endsWith('.js')
-    );
+    const eventFiles = readdirSync(eventsPath).filter(isLoadableModuleFile);
 
     for (const file of eventFiles) {
       const filePath = join(eventsPath, file);
@@ -215,9 +212,7 @@ async function loadComponents(): Promise<void> {
     let componentFiles: string[];
 
     try {
-      componentFiles = readdirSync(dir).filter(
-        (file: string) => file.endsWith('.ts') || file.endsWith('.js')
-      );
+      componentFiles = readdirSync(dir).filter(isLoadableModuleFile);
     } catch {
       // Dossier optionnel : on passe au suivant s'il n'existe pas.
       continue;
@@ -257,9 +252,7 @@ async function loadCrons(): Promise<void> {
   const cronsPath = join(__dirname, 'crons');
 
   try {
-    const cronFiles = readdirSync(cronsPath).filter(
-      (file: string) => file.endsWith('.ts') || file.endsWith('.js')
-    );
+    const cronFiles = readdirSync(cronsPath).filter(isLoadableModuleFile);
 
     for (const file of cronFiles) {
       const filePath = join(cronsPath, file);
