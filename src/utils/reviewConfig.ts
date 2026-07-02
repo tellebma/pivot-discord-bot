@@ -1,4 +1,5 @@
 import { config as dotenvConfig } from 'dotenv';
+import { Logger } from './logger';
 
 dotenvConfig();
 
@@ -16,6 +17,19 @@ export interface ReviewConfig {
     token: string | undefined;
     /** Base de l'API GitHub (personnalisable pour GitHub Enterprise). */
     apiBaseUrl: string;
+    /**
+     * GitHub App pour agir au nom d'une identité bot (`mon-app[bot]`) : les
+     * tokens d'installation sont frappés à la demande par le bot. `null` =
+     * non configurée, repli sur le `GITHUB_TOKEN` statique.
+     */
+    app: {
+      /** App ID numérique ou Client ID (`Iv...`). */
+      appId: string;
+      /** ID de l'installation de l'App sur l'organisation. */
+      installationId: string;
+      /** Chemin de la clé privée PEM (montée en volume en production). */
+      privateKeyPath: string;
+    } | null;
   };
   claude: {
     /** Chemin/commande de la CLI Claude installée sur l'hôte. */
@@ -71,6 +85,32 @@ function parseWorkspaceDir(value: string | undefined): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+/**
+ * Configuration GitHub App : active uniquement si les trois variables sont
+ * présentes ; une configuration partielle est signalée puis ignorée.
+ */
+function parseGithubApp(
+  appId: string | undefined,
+  installationId: string | undefined,
+  privateKeyPath: string | undefined
+): ReviewConfig['github']['app'] {
+  const provided = [appId, installationId, privateKeyPath].filter(
+    value => value && value.trim().length > 0
+  ).length;
+  if (provided === 0) return null;
+  if (provided < 3 || !appId || !installationId || !privateKeyPath) {
+    Logger.warn(
+      'GitHub App partiellement configurée (GITHUB_APP_ID, GITHUB_APP_INSTALLATION_ID et GITHUB_APP_PRIVATE_KEY_PATH sont tous requis) : ignorée.'
+    );
+    return null;
+  }
+  return {
+    appId: appId.trim(),
+    installationId: installationId.trim(),
+    privateKeyPath: privateKeyPath.trim(),
+  };
+}
+
 function parseInteger(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
@@ -82,6 +122,11 @@ export const reviewConfig: ReviewConfig = {
   github: {
     token: process.env['GITHUB_TOKEN'] || undefined,
     apiBaseUrl: process.env['GITHUB_API_URL'] ?? 'https://api.github.com',
+    app: parseGithubApp(
+      process.env['GITHUB_APP_ID'],
+      process.env['GITHUB_APP_INSTALLATION_ID'],
+      process.env['GITHUB_APP_PRIVATE_KEY_PATH']
+    ),
   },
   claude: {
     cliPath: process.env['CLAUDE_CLI_PATH'] ?? 'claude',

@@ -30,11 +30,17 @@ export async function withRepoLock<T>(key: string, fn: () => Promise<T>): Promis
   return run;
 }
 
-function runCommand(command: string, args: string[], cwd?: string): Promise<void> {
+function runCommand(
+  command: string,
+  args: string[],
+  cwd?: string,
+  env?: Record<string, string>
+): Promise<void> {
   return new Promise<void>((resolvePromise, reject) => {
     const child = spawn(command, args, {
       stdio: ['ignore', 'ignore', 'pipe'],
       ...(cwd ? { cwd } : {}),
+      ...(env ? { env: { ...process.env, ...env } } : {}),
     });
 
     let stderr = '';
@@ -93,7 +99,10 @@ async function isGitRepository(dir: string): Promise<boolean> {
  * compris). Renvoie `null` si le workspace est désactivé ou si la préparation
  * échoue — la relecture se replie alors sur la CLI `gh` seule.
  */
-async function prepareReviewWorkspace(ref: PullRequestRef): Promise<string | null> {
+async function prepareReviewWorkspace(
+  ref: PullRequestRef,
+  env?: Record<string, string>
+): Promise<string | null> {
   const baseDir = reviewConfig.workspaceDir;
   if (!baseDir) return null;
 
@@ -108,12 +117,17 @@ async function prepareReviewWorkspace(ref: PullRequestRef): Promise<string | nul
       await runCommand('git', ['clean', '-fd'], repoDir);
     } else {
       await mkdir(resolve(baseDir, ref.owner), { recursive: true });
-      await runCommand('gh', ['repo', 'clone', `${ref.owner}/${ref.repo}`, repoDir]);
+      await runCommand(
+        'gh',
+        ['repo', 'clone', `${ref.owner}/${ref.repo}`, repoDir],
+        undefined,
+        env
+      );
     }
 
     // --force : réinitialise la branche locale si la PR a été force-pushée
     // depuis une relecture précédente (sinon le checkout non fast-forward échoue).
-    await runCommand('gh', ['pr', 'checkout', String(ref.number), '--force'], repoDir);
+    await runCommand('gh', ['pr', 'checkout', String(ref.number), '--force'], repoDir, env);
 
     Logger.info('Review workspace ready', {
       repo: `${ref.owner}/${ref.repo}`,
@@ -138,10 +152,11 @@ async function prepareReviewWorkspace(ref: PullRequestRef): Promise<string | nul
  */
 export async function withReviewWorkspace<T>(
   ref: PullRequestRef,
-  fn: (workspaceDir: string | null) => Promise<T>
+  fn: (workspaceDir: string | null) => Promise<T>,
+  env?: Record<string, string>
 ): Promise<T> {
   return withRepoLock(`${ref.owner}/${ref.repo}`, async () => {
-    const workspaceDir = await prepareReviewWorkspace(ref);
+    const workspaceDir = await prepareReviewWorkspace(ref, env);
     return fn(workspaceDir);
   });
 }

@@ -55,7 +55,11 @@ export function selectReviewTools(allowedTools: string[], hasLocalCheckout: bool
  * `gh` pour consulter la PR et agir dessus, et Read/Grep/Glob pour explorer le
  * checkout local (`cwd`) en lecture seule — et rien d'autre.
  */
-export function runClaudeReview(prompt: string, cwd?: string): Promise<string> {
+export function runClaudeReview(
+  prompt: string,
+  cwd?: string,
+  env?: Record<string, string>
+): Promise<string> {
   const { cliPath, model, extraArgs, timeoutMs, allowedTools, maxTurns } = reviewConfig.claude;
   const tools = selectReviewTools(allowedTools, cwd !== undefined);
 
@@ -69,5 +73,12 @@ export function runClaudeReview(prompt: string, cwd?: string): Promise<string> {
   args.push('--max-turns', String(maxTurns));
   args.push(...extraArgs);
 
-  return runClaudeCli({ prompt, cliPath, args, timeoutMs, ...(cwd ? { cwd } : {}) });
+  return runClaudeCli({
+    prompt,
+    cliPath,
+    args,
+    timeoutMs,
+    ...(cwd ? { cwd } : {}),
+    ...(env ? { env } : {}),
+  });
 }

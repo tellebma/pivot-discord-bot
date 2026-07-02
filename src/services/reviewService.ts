@@ -2,6 +2,7 @@ import { Logger } from '@/utils/logger';
 import { fetchPullRequest, type PullRequestMetadata, type PullRequestRef } from './github';
 import { buildReviewPrompt, runClaudeReview } from './claudeReview';
 import { withReviewWorkspace } from './reviewWorkspace';
+import { buildGithubAppEnv } from './githubApp';
 
 /**
  * Résultat complet d'une relecture : métadonnées de la PR et texte produit par
@@ -29,8 +30,19 @@ export async function generateReview(ref: PullRequestRef): Promise<ReviewResult>
 
   const metadata = await fetchPullRequest(ref);
 
-  const review = await withReviewWorkspace(ref, workspaceDir =>
-    runClaudeReview(buildReviewPrompt(ref, workspaceDir !== null), workspaceDir ?? undefined)
+  // Token frais frappé via la GitHub App (identité bot) si configurée ;
+  // `undefined` sinon (les sous-processus héritent du GITHUB_TOKEN statique).
+  const githubEnv = await buildGithubAppEnv();
+
+  const review = await withReviewWorkspace(
+    ref,
+    workspaceDir =>
+      runClaudeReview(
+        buildReviewPrompt(ref, workspaceDir !== null),
+        workspaceDir ?? undefined,
+        githubEnv
+      ),
+    githubEnv
   );
 
   Logger.info('PR review completed', {
