@@ -4,6 +4,7 @@
 export { Logger, LogLevel } from './logger';
 export { config, validateConfig } from './config';
 export { reviewConfig, type ReviewConfig } from './reviewConfig';
+export { askConfig, type AskConfig } from './askConfig';
 export {
   defineCommand,
   simpleCommand,
