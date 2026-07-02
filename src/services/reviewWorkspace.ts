@@ -111,7 +111,9 @@ async function prepareReviewWorkspace(ref: PullRequestRef): Promise<string | nul
       await runCommand('gh', ['repo', 'clone', `${ref.owner}/${ref.repo}`, repoDir]);
     }
 
-    await runCommand('gh', ['pr', 'checkout', String(ref.number)], repoDir);
+    // --force : réinitialise la branche locale si la PR a été force-pushée
+    // depuis une relecture précédente (sinon le checkout non fast-forward échoue).
+    await runCommand('gh', ['pr', 'checkout', String(ref.number), '--force'], repoDir);
 
     Logger.info('Review workspace ready', {
       repo: `${ref.owner}/${ref.repo}`,

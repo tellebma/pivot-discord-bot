@@ -31,9 +31,13 @@ RUN apk add --no-cache git github-cli
 ARG UID=1001
 ARG GID=1001
 ENV HOME=/home/botuser
+# Workspace de relecture : le défaut du code (.review-workspace, relatif au
+# cwd /usr/src/app) n'est pas inscriptible par botuser — on fixe un chemin
+# dans $HOME, surchargeable au runtime (et monté en volume en production).
+ENV PR_REVIEW_WORKSPACE_DIR=${HOME}/review-workspace
 RUN addgroup -S -g "${GID}" botgroup \
   && adduser -S -u "${UID}" -G botgroup -h "${HOME}" botuser \
-  && mkdir -p "${HOME}/.claude" \
+  && mkdir -p "${HOME}/.claude" "${HOME}/review-workspace" \
   && chown -R botuser:botgroup "${HOME}"
 
 COPY --from=builder /usr/src/app/dist ./dist

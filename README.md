@@ -21,12 +21,15 @@ centralisée et intégration Sentry optionnelle.
 
 1. Un utilisateur poste une URL de PR (`https://github.com/owner/repo/pull/123`)
    dans un canal surveillé.
-2. Le bot réagit avec 👀, récupère les métadonnées et le **diff complet** de la
-   PR via l'API REST GitHub.
-3. Il construit un prompt de relecture puis invoque la CLI Claude en mode
-   headless (`claude -p`), avec la CLI **`gh` comme seul outil autorisé** :
-   l'agent **approuve la PR** ou **demande des changements** (avec les
-   correctifs proposés) directement sur GitHub.
+2. Le bot réagit avec 👀, vérifie la PR via l'API REST GitHub, puis prépare un
+   **checkout local du code de la PR** (clone persistant par dépôt +
+   `gh pr checkout`).
+3. Il invoque la CLI Claude en mode headless (`claude -p`) avec un **prompt
+   minimal** (dépôt, numéro, URL) : l'agent récupère lui-même la description et
+   le diff via la CLI **`gh`**, explore le code local **en lecture seule**
+   (Read/Grep/Glob), puis **approuve la PR** ou **demande des changements**
+   (avec les correctifs proposés) directement sur GitHub. Si le checkout local
+   n'a pas pu être préparé, la relecture se replie sur la CLI `gh` seule.
 4. Le résumé de la relecture est publié dans un fil de discussion, et le message
    est marqué ✅ (ou ❌ en cas d'échec).
 
@@ -80,8 +83,8 @@ cp .env.example .env   # puis renseignez les variables
 | `PR_REVIEW_CHANNEL_ID`     | –           | ID(s) des canaux surveillés (séparés par des virgules).           |
 | `GITHUB_TOKEN`             | –           | Token GitHub (lecture des PR + approbation/commentaires via `gh`). |
 | `GITHUB_API_URL`           | –           | Base de l'API GitHub (GitHub Enterprise). Défaut : api.github.com. |
-| `PR_REVIEW_MAX_DIFF_CHARS` | –           | Taille max du diff envoyé à l'agent. Défaut : 200000.             |
-| `PR_REVIEW_ALLOWED_TOOLS`  | –           | Outils de l'agent de relecture. Défaut : `Bash(gh pr:*),Bash(gh api:*)`. |
+| `PR_REVIEW_WORKSPACE_DIR`  | –           | Clones locaux du code des PR relues. Défaut : `.review-workspace` ; vide = désactivé (relecture via `gh` seule). |
+| `PR_REVIEW_ALLOWED_TOOLS`  | –           | Outils de l'agent de relecture. Défaut : `Bash(gh pr:*),Bash(gh api:*),Read,Grep,Glob`. |
 | `PR_REVIEW_MAX_TURNS`      | –           | Tours max de l'agent de relecture. Défaut : 20.                   |
 | `CLAUDE_CLI_PATH`          | –           | Commande de la CLI Claude. Défaut : `claude`.                     |
 | `CLAUDE_CLI_MODEL`         | –           | Modèle Claude (optionnel).                                        |

@@ -38,6 +38,17 @@ export function buildReviewPrompt(ref: PullRequestRef, hasLocalCheckout: boolean
 }
 
 /**
+ * Sélectionne les outils autorisés pour l'agent. Sans checkout local, le
+ * sous-processus hériterait du répertoire du bot (qui contient `.env`) : les
+ * outils de lecture du système de fichiers (Read/Grep/Glob) sont alors
+ * retirés, seule la CLI `gh` reste disponible.
+ */
+export function selectReviewTools(allowedTools: string[], hasLocalCheckout: boolean): string[] {
+  if (hasLocalCheckout) return allowedTools;
+  return allowedTools.filter(tool => tool.startsWith('Bash('));
+}
+
+/**
  * Invoque la CLI Claude en mode « print » (headless) et renvoie le texte de la
  * relecture. Le prompt est transmis via stdin pour éviter les limites de
  * longueur d'arguments. L'agent dispose d'une liste blanche d'outils : la CLI
@@ -46,8 +57,12 @@ export function buildReviewPrompt(ref: PullRequestRef, hasLocalCheckout: boolean
  */
 export function runClaudeReview(prompt: string, cwd?: string): Promise<string> {
   const { cliPath, model, extraArgs, timeoutMs, allowedTools, maxTurns } = reviewConfig.claude;
+  const tools = selectReviewTools(allowedTools, cwd !== undefined);
 
-  const args = ['-p', '--output-format', 'text', '--allowedTools', ...allowedTools];
+  const args = ['-p', '--output-format', 'text'];
+  if (tools.length > 0) {
+    args.push('--allowedTools', ...tools);
+  }
   if (model) {
     args.push('--model', model);
   }

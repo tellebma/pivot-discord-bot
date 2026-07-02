@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildReviewPrompt } from '@/services/claudeReview';
+import { buildReviewPrompt, selectReviewTools } from '@/services/claudeReview';
 import type { PullRequestRef } from '@/services/github';
 
 const ref: PullRequestRef = {
@@ -42,5 +42,17 @@ describe('buildReviewPrompt', () => {
     expect(prompt).toContain('approuve-la');
     expect(prompt).toContain('demande des changements');
     expect(prompt).toContain('résumé');
+  });
+});
+
+describe('selectReviewTools', () => {
+  const tools = ['Bash(gh pr:*)', 'Bash(gh api:*)', 'Read', 'Grep', 'Glob'];
+
+  it('conserve tous les outils quand le checkout local est disponible', () => {
+    expect(selectReviewTools(tools, true)).toEqual(tools);
+  });
+
+  it('retire les outils de lecture du système de fichiers sans checkout local', () => {
+    expect(selectReviewTools(tools, false)).toEqual(['Bash(gh pr:*)', 'Bash(gh api:*)']);
   });
 });
