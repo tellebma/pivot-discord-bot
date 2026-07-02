@@ -12,7 +12,7 @@ import { generateReview } from '@/services/reviewService';
 export default {
   data: new SlashCommandBuilder()
     .setName('review')
-    .setDescription('Lance une relecture complète d\'une Pull Request GitHub')
+    .setDescription("Lance une relecture complète d'une Pull Request GitHub")
     .addStringOption(option =>
       option
         .setName('url')

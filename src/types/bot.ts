@@ -33,9 +33,7 @@ export interface BotCommand {
  */
 export interface BotComponent {
   prefix: string;
-  execute: (
-    interaction: MessageComponentInteraction | ModalSubmitInteraction
-  ) => Promise<void>;
+  execute: (interaction: MessageComponentInteraction | ModalSubmitInteraction) => Promise<void>;
 }
 
 export interface ExtendedClient extends Client {

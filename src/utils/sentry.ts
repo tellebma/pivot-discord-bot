@@ -19,7 +19,7 @@ export function initSentry(): void {
 
   try {
     // Import paresseux : évite de charger le SDK quand Sentry est désactivé.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     sentry = require('@sentry/node') as typeof SentryNode;
     sentry.init({
       dsn,
