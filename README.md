@@ -1,5 +1,8 @@
 # Pivot Discord Bot
 
+[![CI](https://github.com/tellebma/pivot-discord-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/tellebma/pivot-discord-bot/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/tellebma/pivot-discord-bot/actions/workflows/codeql.yml/badge.svg)](https://github.com/tellebma/pivot-discord-bot/actions/workflows/codeql.yml)
+
 Bot Discord de **relecture automatisée de Pull Requests GitHub**.
 
 Le bot surveille un (ou plusieurs) canal(aux) Discord configurable(s). Dès qu'un
@@ -107,6 +110,30 @@ src/
 ├── interactions/           # Routage des composants (boutons, modals…)
 ├── types/
 └── utils/                  # Logger, config, erreurs, embeds, sanitisation…
+```
+
+## Qualité & Intégration continue
+
+Le pipeline GitHub Actions (`.github/workflows/ci.yml`) s'exécute à chaque push
+et pull request :
+
+- **Prettier** — vérification du formatage (`npm run format:check`)
+- **ESLint** — analyse statique (`npm run lint`)
+- **TypeScript** — vérification des types (`npm run type-check`)
+- **Vitest** — tests unitaires + couverture (`npm run test:coverage`)
+- **Build** — compilation `tsc` + résolution des alias (`npm run build`)
+- **Matrice** — Node.js 20.x et 22.x
+- **Audit** — `npm audit` (bloquant sur les vulnérabilités _critical_ en production)
+- **Docker** — build de l'image (validation du `Dockerfile`)
+
+En complément : **CodeQL** (`.github/workflows/codeql.yml`) pour l'analyse de
+sécurité, et **Dependabot** (`.github/dependabot.yml`) pour la mise à jour des
+dépendances npm, des actions GitHub et de l'image Docker.
+
+Pour tout lancer localement en une commande :
+
+```bash
+npm run validate   # format:check + lint + type-check + test + build
 ```
 
 ## Sécurité

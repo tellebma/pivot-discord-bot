@@ -36,11 +36,7 @@ export default {
       }
 
       // 3. Composants (boutons, select menus, modals)
-      if (
-        interaction.isButton() ||
-        interaction.isAnySelectMenu() ||
-        interaction.isModalSubmit()
-      ) {
+      if (interaction.isButton() || interaction.isAnySelectMenu() || interaction.isModalSubmit()) {
         const component = resolveComponent(client.components, interaction.customId);
         if (!component) {
           Logger.warn('Component handler not found', { customId: interaction.customId });

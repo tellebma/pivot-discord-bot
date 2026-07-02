@@ -69,10 +69,7 @@ async function reviewAndReport(message: Message, ref: PullRequestRef): Promise<v
  * Résout la cible d'envoi : un fil dédié attaché au message si possible, sinon
  * le canal courant s'il est capable de recevoir des messages.
  */
-async function resolveTarget(
-  message: Message,
-  label: string
-): Promise<SendableChannels | null> {
+async function resolveTarget(message: Message, label: string): Promise<SendableChannels | null> {
   const thread = await message
     .startThread({ name: `Review ${label}`.slice(0, 100) })
     .catch(() => null);

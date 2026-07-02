@@ -31,10 +31,7 @@ export async function generateReview(ref: PullRequestRef): Promise<ReviewResult>
     pr: ref.number,
   });
 
-  const [metadata, rawDiff] = await Promise.all([
-    fetchPullRequest(ref),
-    fetchPullRequestDiff(ref),
-  ]);
+  const [metadata, rawDiff] = await Promise.all([fetchPullRequest(ref), fetchPullRequestDiff(ref)]);
 
   const diffTruncated = rawDiff.length > reviewConfig.maxDiffChars;
   const diff = diffTruncated ? rawDiff.slice(0, reviewConfig.maxDiffChars) : rawDiff;

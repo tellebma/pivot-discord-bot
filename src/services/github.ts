@@ -32,8 +32,7 @@ export interface PullRequestMetadata {
 }
 
 // Capture owner / repo / numéro d'une URL de PR GitHub (globale pour multi-match).
-const PR_URL_REGEX =
-  /https?:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)(?:[/#?][^\s>]*)?/gi;
+const PR_URL_REGEX = /https?:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)(?:[/#?][^\s>]*)?/gi;
 
 /**
  * Analyse une URL unique et renvoie la référence de PR correspondante, ou

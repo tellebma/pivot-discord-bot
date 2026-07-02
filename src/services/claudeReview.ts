@@ -14,7 +14,8 @@ export function buildReviewPrompt(
   diff: string,
   diffTruncated: boolean
 ): string {
-  const description = metadata.body.trim().length > 0 ? metadata.body.trim() : '(aucune description)';
+  const description =
+    metadata.body.trim().length > 0 ? metadata.body.trim() : '(aucune description)';
   const truncationNotice = diffTruncated
     ? '\n\n> ⚠️ Le diff a été tronqué car il dépasse la limite configurée. Base ta revue sur la portion fournie et signale que la couverture est partielle.'
     : '';
@@ -32,7 +33,7 @@ export function buildReviewPrompt(
     `- État : ${metadata.state}${metadata.merged ? ' (mergée)' : ''}`,
     `- Volume : ${metadata.changedFiles} fichier(s) modifié(s), +${metadata.additions} / -${metadata.deletions}`,
     '',
-    '## Description fournie par l\'auteur',
+    "## Description fournie par l'auteur",
     description,
     '',
     '## Diff à relire',
@@ -45,13 +46,13 @@ export function buildReviewPrompt(
     'Produis une relecture complète, actionnable et concise, en français, au format Markdown. Structure impérativement ta réponse ainsi :',
     '',
     '### 🔎 Résumé',
-    "2 à 3 phrases décrivant ce que fait la PR et une appréciation globale.",
+    '2 à 3 phrases décrivant ce que fait la PR et une appréciation globale.',
     '',
     '### 🐛 Bugs & correction',
-    'Erreurs de logique, cas limites non gérés, régressions potentielles. Référence `fichier:ligne` quand c\'est pertinent.',
+    "Erreurs de logique, cas limites non gérés, régressions potentielles. Référence `fichier:ligne` quand c'est pertinent.",
     '',
     '### 🔒 Sécurité',
-    'Failles, secrets exposés, injections, absence de validation des entrées, contrôle d\'accès.',
+    "Failles, secrets exposés, injections, absence de validation des entrées, contrôle d'accès.",
     '',
     '### ⚡ Performance',
     'Requêtes N+1, boucles ou allocations coûteuses, opérations bloquantes.',
@@ -66,9 +67,9 @@ export function buildReviewPrompt(
     "Choisis exactement l'une des options : **Approuver**, **Approuver avec réserves**, ou **Demander des changements**, suivie d'une justification en une phrase.",
     '',
     'Règles :',
-    '- Sois précis et évite les faux positifs : si une section n\'a rien à signaler, écris « RAS ».',
+    "- Sois précis et évite les faux positifs : si une section n'a rien à signaler, écris « RAS ».",
     '- Priorise les problèmes bloquants ; ignore les détails purement cosmétiques.',
-    '- Propose des correctifs ciblés plutôt que de réécrire l\'ensemble de la PR.',
+    "- Propose des correctifs ciblés plutôt que de réécrire l'ensemble de la PR.",
     '- Ne renvoie que la revue au format Markdown, sans préambule ni conclusion superflus.',
   ].join('\n');
 }
