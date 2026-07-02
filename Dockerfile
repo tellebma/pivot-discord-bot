@@ -18,10 +18,12 @@ ENV NODE_ENV=production
 # soit un montage de ~/.claude (abonnement Pro/Max).
 RUN npm install -g @anthropic-ai/claude-code
 
-# La CLI GitHub (`gh`) permet à l'agent de relecture d'approuver une PR ou de
-# demander des changements directement dessus. Elle s'authentifie au runtime
-# via la variable d'environnement GITHUB_TOKEN.
-RUN apk add --no-cache github-cli
+# La CLI GitHub (`gh`) permet à l'agent de relecture de consulter la PR et
+# d'approuver ou de demander des changements directement dessus. Elle
+# s'authentifie au runtime via la variable d'environnement GITHUB_TOKEN.
+# `git` est requis par `gh repo clone` / `gh pr checkout` pour préparer le
+# checkout local du code des PR relues.
+RUN apk add --no-cache git github-cli
 
 # Utilisateur non-root avec un UID/GID fixes et prévisibles. Fixer l'UID permet
 # d'aligner les permissions du volume ~/.claude monté depuis l'hôte

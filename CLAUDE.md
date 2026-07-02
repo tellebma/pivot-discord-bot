@@ -53,8 +53,9 @@ src/
 │   └── messageCreate.ts   # Détecte les liens de PR dans les canaux surveillés
 ├── services/              # Logique métier (sans dépendance Discord si possible)
 │   ├── claudeCli.ts       # Runner bas niveau de la CLI Claude (spawn + stdin/stdout)
-│   ├── github.ts          # Parsing d'URL + métadonnées & diff via l'API GitHub
+│   ├── github.ts          # Parsing d'URL + métadonnées de PR via l'API GitHub
 │   ├── claudeReview.ts    # Prompt de relecture + runClaudeReview
+│   ├── reviewWorkspace.ts # Checkout local du code des PR (clone + gh pr checkout)
 │   ├── reviewService.ts   # Orchestration de la relecture de PR
 │   └── askService.ts      # Prompt métier + garde-fous + orchestration /ask
 ├── interactions/          # Routage des composants (boutons, modals, selects)
@@ -96,11 +97,16 @@ Toute invocation passe par `runClaudeCli({ prompt, cliPath, args, timeoutMs, cwd
 - Le **prompt est transmis via stdin** (pas d'argument) pour éviter les limites
   de longueur.
 - **`/review`** : `claude -p --output-format text --allowedTools "Bash(gh pr:*)"
-  "Bash(gh api:*)" --max-turns N` **sans `cwd`** — l'agent reçoit le diff dans le
-  prompt et n'a accès qu'à la CLI `gh` (configurable via
-  `PR_REVIEW_ALLOWED_TOOLS`) pour **approuver la PR ou demander des changements**
-  directement sur GitHub. `gh` s'authentifie via `GITHUB_TOKEN` (hérité de
-  l'environnement du bot), qui doit donc avoir le droit d'écriture sur les PR.
+  "Bash(gh api:*)" Read Grep Glob --max-turns N` avec **`cwd` = checkout local de
+  la PR** préparé par `reviewWorkspace.ts` (clone persistant par dépôt dans
+  `PR_REVIEW_WORKSPACE_DIR` + `gh pr checkout`, relectures d'un même dépôt
+  sérialisées par un verrou). Le prompt est **minimal** (dépôt, numéro, URL +
+  mission) : l'agent récupère lui-même la description (`gh pr view`) et le diff
+  (`gh pr diff`), explore le code local en lecture seule, puis **approuve la PR
+  ou demande des changements** directement sur GitHub. Si la préparation du
+  checkout échoue, la relecture se replie sur la CLI `gh` seule (sans `cwd`).
+  `gh` s'authentifie via `GITHUB_TOKEN` (hérité de l'environnement du bot), qui
+  doit donc permettre le clone des dépôts et l'écriture sur les PR.
 - **`/ask`** : `claude -p --output-format text --allowedTools Read Grep Glob
   --max-turns N` avec **`cwd` = checkout du code Pivot**. La liste blanche
   d'outils est le **garde-fou principal en lecture seule** : sans `Write`,
@@ -131,7 +137,8 @@ Voir `.env.example` pour la liste complète et commentée. Repères :
 - **Obligatoire** : `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`.
 - **Relecture** : `PR_REVIEW_CHANNEL_ID` (canaux surveillés), `GITHUB_TOKEN`,
   `CLAUDE_CLI_PATH`, `CLAUDE_CLI_MODEL`, `CLAUDE_REVIEW_TIMEOUT_MS`,
-  `PR_REVIEW_MAX_DIFF_CHARS`, `PR_REVIEW_ALLOWED_TOOLS`, `PR_REVIEW_MAX_TURNS`.
+  `PR_REVIEW_WORKSPACE_DIR` (checkout local ; vide = désactivé),
+  `PR_REVIEW_ALLOWED_TOOLS`, `PR_REVIEW_MAX_TURNS`.
 - **/ask** : `ASK_REPO_PATH` (active la commande), `ASK_ALLOWED_TOOLS`,
   `ASK_MAX_TURNS`, `ASK_TIMEOUT_MS`, `ASK_MAX_QUESTION_LENGTH`,
   `ASK_CLAUDE_MODEL`.

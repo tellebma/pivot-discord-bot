@@ -1,47 +1,36 @@
 import { reviewConfig } from '@/utils/reviewConfig';
 import { runClaudeCli } from './claudeCli';
-import type { PullRequestMetadata } from './github';
+import type { PullRequestRef } from './github';
 
 /**
- * Construit le prompt de relecture. Volontairement simple : on demande une
- * relecture de la PR et on laisse l'agent agir directement dessus via la CLI
- * `gh` (approbation ou demande de changements).
+ * Construit le prompt de relecture. Volontairement minimal : seule
+ * l'identification de la PR est fournie, l'agent récupère lui-même la
+ * description et le diff via la CLI `gh`, explore le checkout local du code
+ * s'il est disponible, puis agit directement sur la PR (approbation ou
+ * demande de changements).
  */
-export function buildReviewPrompt(
-  metadata: PullRequestMetadata,
-  diff: string,
-  diffTruncated: boolean
-): string {
-  const description =
-    metadata.body.trim().length > 0 ? metadata.body.trim() : '(aucune description)';
-  const prTarget = `${metadata.number} --repo ${metadata.owner}/${metadata.repo}`;
-  const truncationNotice = diffTruncated
-    ? '\n\n> ⚠️ Le diff ci-dessus a été tronqué. Récupère le diff complet avec `gh pr diff` si nécessaire.'
-    : '';
+export function buildReviewPrompt(ref: PullRequestRef, hasLocalCheckout: boolean): string {
+  const prTarget = `${ref.number} --repo ${ref.owner}/${ref.repo}`;
+  const codeAccess = hasLocalCheckout
+    ? 'Le code de la PR est déjà extrait dans le répertoire courant, sur la branche de la PR : explore-le avec Read, Grep et Glob pour comprendre le contexte autour du diff.'
+    : "Aucun checkout local n'est disponible : si tu as besoin de contexte au-delà du diff, lis les fichiers concernés via `gh api`.";
 
   return [
-    "Tu es chargé de la relecture (code review) d'une Pull Request GitHub. La CLI `gh` est disponible et déjà authentifiée : utilise-la pour agir directement sur la PR.",
+    "Tu es chargé de la relecture (code review) d'une Pull Request GitHub. La CLI `gh` est disponible et déjà authentifiée : utilise-la pour consulter la PR et agir directement dessus.",
     '',
     '## Pull Request',
-    `- Dépôt : ${metadata.owner}/${metadata.repo}`,
-    `- Numéro : #${metadata.number}`,
-    `- URL : ${metadata.htmlUrl}`,
-    `- Titre : ${metadata.title}`,
-    `- Branches : \`${metadata.headRef}\` → \`${metadata.baseRef}\``,
+    `- Dépôt : ${ref.owner}/${ref.repo}`,
+    `- Numéro : #${ref.number}`,
+    `- URL : ${ref.url}`,
     '',
-    "## Description fournie par l'auteur",
-    description,
-    '',
-    '## Diff',
-    '```diff',
-    diff,
-    '```',
-    truncationNotice,
+    '## Comment procéder',
+    `- Récupère le titre et la description avec \`gh pr view ${prTarget}\`, puis le diff avec \`gh pr diff ${prTarget}\`.`,
+    `- ${codeAccess}`,
     '',
     '## Ta mission',
     'Relis cette PR, puis agis directement dessus :',
-    `- Si elle peut être approuvée, approuve-la : \`gh pr review ${prTarget} --approve --body "<justification courte>"\`.`,
-    `- Si des modifications sont nécessaires, demande des changements : \`gh pr review ${prTarget} --request-changes --body "<modifications demandées>"\`, en proposant concrètement chaque correction (fichier, ligne, correctif suggéré) directement dans la PR.`,
+    '- Si elle peut être approuvée, approuve-la.',
+    '- Si des modifications sont nécessaires, demande des changements, en proposant concrètement chaque correction (fichier, ligne, correctif suggéré) directement dans la PR.',
     '',
     "Termine ta réponse par un court résumé en français (Markdown, quelques phrases) de ta relecture et de l'action effectuée : ce résumé sera publié sur Discord.",
     "Si une commande `gh` échoue, n'insiste pas : publie quand même ta relecture dans le résumé et signale que l'action sur GitHub n'a pas pu être réalisée.",
@@ -51,10 +40,11 @@ export function buildReviewPrompt(
 /**
  * Invoque la CLI Claude en mode « print » (headless) et renvoie le texte de la
  * relecture. Le prompt est transmis via stdin pour éviter les limites de
- * longueur d'arguments. L'agent dispose d'une liste blanche d'outils limitée à
- * la CLI `gh` afin de pouvoir approuver ou commenter la PR — et rien d'autre.
+ * longueur d'arguments. L'agent dispose d'une liste blanche d'outils : la CLI
+ * `gh` pour consulter la PR et agir dessus, et Read/Grep/Glob pour explorer le
+ * checkout local (`cwd`) en lecture seule — et rien d'autre.
  */
-export function runClaudeReview(prompt: string): Promise<string> {
+export function runClaudeReview(prompt: string, cwd?: string): Promise<string> {
   const { cliPath, model, extraArgs, timeoutMs, allowedTools, maxTurns } = reviewConfig.claude;
 
   const args = ['-p', '--output-format', 'text', '--allowedTools', ...allowedTools];
@@ -64,5 +54,5 @@ export function runClaudeReview(prompt: string): Promise<string> {
   args.push('--max-turns', String(maxTurns));
   args.push(...extraArgs);
 
-  return runClaudeCli({ prompt, cliPath, args, timeoutMs });
+  return runClaudeCli({ prompt, cliPath, args, timeoutMs, ...(cwd ? { cwd } : {}) });
 }

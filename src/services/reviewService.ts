@@ -1,12 +1,7 @@
-import { reviewConfig } from '@/utils/reviewConfig';
 import { Logger } from '@/utils/logger';
-import {
-  fetchPullRequest,
-  fetchPullRequestDiff,
-  type PullRequestMetadata,
-  type PullRequestRef,
-} from './github';
+import { fetchPullRequest, type PullRequestMetadata, type PullRequestRef } from './github';
 import { buildReviewPrompt, runClaudeReview } from './claudeReview';
+import { withReviewWorkspace } from './reviewWorkspace';
 
 /**
  * Résultat complet d'une relecture : métadonnées de la PR et texte produit par
@@ -15,16 +10,16 @@ import { buildReviewPrompt, runClaudeReview } from './claudeReview';
 export interface ReviewResult {
   metadata: PullRequestMetadata;
   review: string;
-  diffTruncated: boolean;
 }
 
 /**
  * Orchestration de bout en bout d'une relecture de PR :
- *   1. récupère les métadonnées et le diff via l'API GitHub ;
- *   2. tronque le diff si nécessaire ;
- *   3. construit le prompt de relecture ;
- *   4. lance l'agent Claude via la CLI, avec la CLI `gh` comme seul outil
- *      autorisé pour approuver la PR ou demander des changements dessus.
+ *   1. récupère les métadonnées via l'API GitHub (vérifie que la PR existe et
+ *      alimente l'en-tête publié sur Discord) ;
+ *   2. prépare le checkout local du code de la PR (clone + `gh pr checkout`),
+ *      avec repli sans checkout si la préparation échoue ;
+ *   3. lance l'agent Claude via la CLI : il récupère lui-même la description
+ *      et le diff via `gh`, puis approuve la PR ou demande des changements.
  */
 export async function generateReview(ref: PullRequestRef): Promise<ReviewResult> {
   Logger.info('Starting PR review', {
@@ -32,20 +27,17 @@ export async function generateReview(ref: PullRequestRef): Promise<ReviewResult>
     pr: ref.number,
   });
 
-  const [metadata, rawDiff] = await Promise.all([fetchPullRequest(ref), fetchPullRequestDiff(ref)]);
+  const metadata = await fetchPullRequest(ref);
 
-  const diffTruncated = rawDiff.length > reviewConfig.maxDiffChars;
-  const diff = diffTruncated ? rawDiff.slice(0, reviewConfig.maxDiffChars) : rawDiff;
-
-  const prompt = buildReviewPrompt(metadata, diff, diffTruncated);
-  const review = await runClaudeReview(prompt);
+  const review = await withReviewWorkspace(ref, workspaceDir =>
+    runClaudeReview(buildReviewPrompt(ref, workspaceDir !== null), workspaceDir ?? undefined)
+  );
 
   Logger.info('PR review completed', {
     repo: `${ref.owner}/${ref.repo}`,
     pr: ref.number,
-    diffTruncated,
     reviewLength: review.length,
   });
 
-  return { metadata, review, diffTruncated };
+  return { metadata, review };
 }
