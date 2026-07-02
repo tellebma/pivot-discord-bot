@@ -92,3 +92,18 @@ Priorité : **P1** (haute) · **P2** (moyenne) · **P3** (basse).
 - Commande `/glossaire` : définitions métier extraites du code Pivot.
 - Persistance (base de données) pour l'historique des relectures et des
   questions.
+
+---
+
+## 🚫 Hors périmètre (décisions)
+
+### D-01 — Commande `/feedback` : NON retenue dans le bot
+
+Le recueil de feedback utilisateur est **intégré directement dans l'application
+Pivot**, pas dans le bot Discord.
+
+_Raison_ : le feedback n'a de valeur qu'avec son contexte (écran concerné, état
+de la session, parcours en cours, éventuelle capture). Le capturer dans l'app,
+au moment vécu par l'utilisateur, évite la friction d'un aller-retour vers
+Discord et préserve ce contexte. Le bot reste focalisé sur la relecture de PR et
+la recherche métier.
