@@ -1,5 +1,5 @@
 # ---- Build stage ----
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm ci
@@ -9,7 +9,7 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 # ---- Production stage ----
-FROM node:20-alpine
+FROM node:26-alpine
 WORKDIR /usr/src/app
 ENV NODE_ENV=production
 
