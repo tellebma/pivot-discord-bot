@@ -1,0 +1,13 @@
+services:
+  pivot-discord-bot:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    # La CLI Claude a besoin d'une authentification. Fournissez soit une clé
+    # d'API, soit montez la configuration d'authentification de l'hôte.
+    #   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    # volumes:
+    #   - ~/.claude:/home/botuser/.claude:ro
