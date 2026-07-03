@@ -50,4 +50,14 @@ describe('runClaudeCli', () => {
       runFakeCli('process.stdout.write("Invalid API key"); process.exit(1);')
     ).rejects.toThrow(/Invalid API key/);
   });
+
+  it('inclut stderr ET la fin de stdout quand la CLI échoue avec les deux flux', async () => {
+    // Cas réel : stderr ne porte qu'un avertissement (workspace non trusté)
+    // tandis que l'erreur réelle (max turns, clé invalide) est sur stdout.
+    await expect(
+      runFakeCli(
+        'process.stderr.write("avertissement anodin"); process.stdout.write("erreur reelle en fin de sortie"); process.exit(1);'
+      )
+    ).rejects.toThrow(/avertissement anodin[\s\S]*erreur reelle en fin de sortie/);
+  });
 });

@@ -23,7 +23,9 @@ RUN npm install -g @anthropic-ai/claude-code
 # s'authentifie au runtime via la variable d'environnement GITHUB_TOKEN.
 # `git` est requis par `gh repo clone` / `gh pr checkout` pour préparer le
 # checkout local du code des PR relues.
-RUN apk add --no-cache git github-cli
+# `bash` est requis par l'outil Bash de la CLI Claude : le `sh` de busybox
+# (Alpine) est refusé (« No suitable shell found »), même avec SHELL défini.
+RUN apk add --no-cache bash git github-cli
 
 # Utilisateur non-root avec un UID/GID fixes et prévisibles. Fixer l'UID permet
 # d'aligner les permissions du volume ~/.claude monté depuis l'hôte
@@ -31,6 +33,8 @@ RUN apk add --no-cache git github-cli
 ARG UID=1001
 ARG GID=1001
 ENV HOME=/home/botuser
+# Shell POSIX pour l'outil Bash de la CLI Claude (voir apk add ci-dessus).
+ENV SHELL=/bin/bash
 # Workspace de relecture : le défaut du code (.review-workspace, relatif au
 # cwd /usr/src/app) n'est pas inscriptible par botuser — on fixe un chemin
 # dans $HOME, surchargeable au runtime (et monté en volume en production).
