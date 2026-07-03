@@ -35,6 +35,11 @@ services:
       ASK_REPO_PATH: /pivot
       # Clones locaux du code des PR relues (cf. volume ci-dessous).
       PR_REVIEW_WORKSPACE_DIR: /home/botuser/review-workspace
+      # Config de la CLI Claude (.claude.json) rangée DANS le volume ~/.claude
+      # (cf. volume 2 ci-dessous). Sans cela elle vit à la racine du HOME
+      # éphémère du conteneur et disparaît à chaque recréation — la CLI refuse
+      # alors de démarrer (« configuration file not found », backups orphelins).
+      CLAUDE_CONFIG_DIR: /home/botuser/.claude
     volumes:
       # 1) Code applicatif Pivot (branche main), en LECTURE SEULE, pour /ask.
       - /mnt/user/appdata/pivot-discord-bot/pivot-src:/pivot:ro

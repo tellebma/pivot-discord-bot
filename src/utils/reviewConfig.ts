@@ -140,7 +140,9 @@ export const reviewConfig: ReviewConfig = {
       'Grep',
       'Glob',
     ]),
-    maxTurns: parseInteger(process.env['PR_REVIEW_MAX_TURNS'], 20),
+    // Avec le checkout local (activé par défaut), l'agent explore le code en
+    // plus du diff : 20 tours étaient systématiquement épuisés.
+    maxTurns: parseInteger(process.env['PR_REVIEW_MAX_TURNS'], 50),
   },
   workspaceDir: parseWorkspaceDir(process.env['PR_REVIEW_WORKSPACE_DIR']),
 };

@@ -18,6 +18,10 @@ services:
       NODE_ENV: production
       # Chemin du code Pivot À L'INTÉRIEUR du conteneur (cf. volume ci-dessous).
       ASK_REPO_PATH: /pivot
+      # Config de la CLI Claude (.claude.json) rangée dans ~/.claude : persiste
+      # avec le montage de l'option 2b, et évite qu'une config créée à la racine
+      # du HOME éphémère soit perdue à chaque recréation du conteneur.
+      CLAUDE_CONFIG_DIR: /home/botuser/.claude
     volumes:
       # 1) Code applicatif Pivot (branche main), en LECTURE SEULE, pour /ask.
       #    Définissez PIVOT_SRC_PATH dans .env (défaut : /srv/pivot-src).

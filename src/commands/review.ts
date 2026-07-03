@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import type { ChatInputCommandInteraction } from 'discord.js';
 import { Logger, splitForDiscord } from '@/utils';
+import { BotError } from '@/utils/errors';
 import { parsePullRequestUrl } from '@/services/github';
 import { generateReview } from '@/services/reviewService';
 
@@ -47,9 +48,13 @@ export default {
         await interaction.followUp(chunk);
       }
     } catch (error) {
+      // L'erreur d'origine (ENOENT, refus réseau, ...) est souvent plus
+      // parlante que le message enveloppé : la remonter dans les logs.
+      const cause = error instanceof BotError ? error.originalError?.message : undefined;
       Logger.error('Manual review failed', {
         pr: label,
         error: error instanceof Error ? error.message : String(error),
+        ...(cause ? { cause } : {}),
       });
       await interaction.editReply(
         `❌ La relecture de \`${label}\` a échoué. Consultez les logs pour plus de détails.`
